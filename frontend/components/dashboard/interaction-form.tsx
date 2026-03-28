@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect  } from "react"
+import { useState, useEffect } from "react"
 import { format } from "date-fns"
 import { CalendarIcon, Users, Video, Phone } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -22,19 +22,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-// Sample mentee data
-const [mentees, setMentees] = useState<{id: string, name: string, year: string, department: string}[]>([])
-
-useEffect(() => {
-  fetch('http://localhost:5000/api/mentees')
-    .then(r => r.json())
-    .then(data => setMentees(data.map((m: any) => ({
-      id: String(m.id),
-      name: m.name,
-      year: m.academic_year,
-      department: m.department
-    }))))
-}, [])
 const interactionModes = [
   { value: "in-person", label: "In-Person", icon: Users },
   { value: "online", label: "Online", icon: Video },
@@ -42,6 +29,8 @@ const interactionModes = [
 ]
 
 export function InteractionForm() {
+  // All hooks INSIDE the component - this is the fix!
+  const [mentees, setMentees] = useState<{id: string, name: string, year: string, department: string}[]>([])
   const [selectedMentee, setSelectedMentee] = useState("")
   const [interactionDate, setInteractionDate] = useState<Date>()
   const [interactionMode, setInteractionMode] = useState("")
@@ -50,10 +39,31 @@ export function InteractionForm() {
   const [nextMeetingDate, setNextMeetingDate] = useState<Date>()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  // Fetch mentees from Flask on load
+  useEffect(() => {
+    fetch('http://localhost:5000/api/mentees')
+      .then(r => r.json())
+      .then(data => setMentees(data.map((m: any) => ({
+        id: String(m.id),
+        name: m.name,
+        year: m.academic_year,
+        department: m.department
+      }))))
+      .catch(() => {
+        // Fallback to sample data if Flask not running
+        setMentees([
+          { id: "1", name: "Aditya Sharma", year: "1st Year", department: "AI & ML" },
+          { id: "2", name: "Sneha Patel", year: "1st Year", department: "AI & ML" },
+          { id: "3", name: "Rahul Menon", year: "2nd Year", department: "AI & ML" },
+          { id: "4", name: "Divya Kulkarni", year: "2nd Year", department: "AI & ML" },
+        ])
+      })
+  }, [])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
-    
+
     try {
       const response = await fetch('http://localhost:5000/api/interactions', {
         method: 'POST',
@@ -67,7 +77,7 @@ export function InteractionForm() {
           next_meeting_date: nextMeetingDate ? format(nextMeetingDate, 'yyyy-MM-dd') : ''
         })
       })
-      
+
       if (response.ok) {
         setSelectedMentee("")
         setInteractionDate(undefined)
@@ -76,11 +86,13 @@ export function InteractionForm() {
         setActionItems("")
         setNextMeetingDate(undefined)
         alert("Interaction logged successfully!")
+      } else {
+        alert("Error saving interaction. Please try again.")
       }
     } catch (error) {
-      alert("Error connecting to server. Please try again.")
+      alert("Could not connect to server. Please make sure Flask is running.")
     }
-    
+
     setIsSubmitting(false)
   }
 
@@ -209,8 +221,8 @@ export function InteractionForm() {
           </div>
 
           {/* Submit Button */}
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             className="w-full"
             disabled={isSubmitting || !selectedMentee || !interactionDate || !interactionMode}
           >

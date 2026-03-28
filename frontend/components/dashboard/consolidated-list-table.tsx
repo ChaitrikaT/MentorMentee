@@ -30,23 +30,7 @@ type MentorMenteeRecord = {
   status: "Active" | "Inactive"
 }
 
-const [records, setRecords] = useState<MentorMenteeRecord[]>([])
-
-useEffect(() => {
-  fetch('http://localhost:5000/api/allocations')
-    .then(r => r.json())
-    .then(data => setRecords(data.map((a: any) => ({
-      id: String(a.id),
-      mentorName: a.mentor_name,
-      department: a.department,
-      menteeName: a.mentee_name,
-      academicYear: a.academic_year,
-      lastInteractionDate: a.last_interaction || '2026-01-01',
-      status: a.status as "Active" | "Inactive"
-    }))))
-}, [])
-
-const departments = ["All Departments", "Computer Science", "Electronics", "Mechanical", "Civil"]
+const departments = ["All Departments", "AI & ML", "Computer Science", "Electronics", "Mechanical", "Civil"]
 const years = ["All Years", "1st Year", "2nd Year", "3rd Year", "4th Year"]
 
 const statusStyles: Record<MentorMenteeRecord["status"], string> = {
@@ -55,6 +39,7 @@ const statusStyles: Record<MentorMenteeRecord["status"], string> = {
 }
 
 function formatDate(dateString: string): string {
+  if (!dateString) return "No interaction yet"
   const date = new Date(dateString)
   return date.toLocaleDateString("en-IN", {
     day: "numeric",
@@ -64,9 +49,39 @@ function formatDate(dateString: string): string {
 }
 
 export function ConsolidatedListTable() {
+  // ALL hooks inside the component
+  const [records, setRecords] = useState<MentorMenteeRecord[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedDepartment, setSelectedDepartment] = useState("All Departments")
   const [selectedYear, setSelectedYear] = useState("All Years")
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('http://localhost:5000/api/allocations')
+      .then(r => r.json())
+      .then(data => {
+        setRecords(data.map((a: any) => ({
+          id: String(a.id),
+          mentorName: a.mentor_name,
+          department: a.department,
+          menteeName: a.mentee_name,
+          academicYear: a.academic_year,
+          lastInteractionDate: a.last_interaction || '',
+          status: a.status as "Active" | "Inactive"
+        })))
+        setLoading(false)
+      })
+      .catch(() => {
+        // Fallback hardcoded data if Flask not running
+        setRecords([
+          { id: "1", mentorName: "Dr. Kavitha Rao", department: "AI & ML", menteeName: "Aditya Sharma", academicYear: "1st Year", lastInteractionDate: "2026-03-20", status: "Active" },
+          { id: "2", mentorName: "Dr. Kavitha Rao", department: "AI & ML", menteeName: "Sneha Patel", academicYear: "1st Year", lastInteractionDate: "2026-01-15", status: "Inactive" },
+          { id: "3", mentorName: "Prof. Anand Bhat", department: "AI & ML", menteeName: "Rahul Menon", academicYear: "2nd Year", lastInteractionDate: "2026-03-25", status: "Active" },
+          { id: "4", mentorName: "Prof. Anand Bhat", department: "AI & ML", menteeName: "Divya Kulkarni", academicYear: "2nd Year", lastInteractionDate: "2026-02-10", status: "Inactive" },
+        ])
+        setLoading(false)
+      })
+  }, [])
 
   const filteredRecords = useMemo(() => {
     return records.filter((record) => {
@@ -74,33 +89,25 @@ export function ConsolidatedListTable() {
         searchQuery === "" ||
         record.mentorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         record.menteeName.toLowerCase().includes(searchQuery.toLowerCase())
-
       const matchesDepartment =
         selectedDepartment === "All Departments" ||
         record.department === selectedDepartment
-
       const matchesYear =
         selectedYear === "All Years" || record.academicYear === selectedYear
-
       return matchesSearch && matchesDepartment && matchesYear
     })
-  }, [searchQuery, selectedDepartment, selectedYear])
+  }, [records, searchQuery, selectedDepartment, selectedYear])
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
-        <h2 className="text-2xl font-semibold text-foreground">
-          Consolidated List
-        </h2>
+        <h2 className="text-2xl font-semibold text-foreground">Consolidated List</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           View all mentor-mentee pairs with their interaction status
         </p>
       </div>
 
-      {/* Search and Filters */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        {/* Search */}
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -110,8 +117,6 @@ export function ConsolidatedListTable() {
             className="pl-10"
           />
         </div>
-
-        {/* Filters */}
         <div className="flex gap-3">
           <Select value={selectedYear} onValueChange={setSelectedYear}>
             <SelectTrigger className="w-[140px] bg-card">
@@ -119,29 +124,23 @@ export function ConsolidatedListTable() {
             </SelectTrigger>
             <SelectContent>
               {years.map((year) => (
-                <SelectItem key={year} value={year}>
-                  {year}
-                </SelectItem>
+                <SelectItem key={year} value={year}>{year}</SelectItem>
               ))}
             </SelectContent>
           </Select>
-
           <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
             <SelectTrigger className="w-[180px] bg-card">
               <SelectValue placeholder="Department" />
             </SelectTrigger>
             <SelectContent>
               {departments.map((dept) => (
-                <SelectItem key={dept} value={dept}>
-                  {dept}
-                </SelectItem>
+                <SelectItem key={dept} value={dept}>{dept}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
       </div>
 
-      {/* Table */}
       <div className="rounded-lg border border-border bg-card">
         <Table>
           <TableHeader>
@@ -155,13 +154,16 @@ export function ConsolidatedListTable() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredRecords.length === 0 ? (
+            {loading ? (
               <TableRow>
-                <TableCell
-                  colSpan={6}
-                  className="h-24 text-center text-muted-foreground"
-                >
-                  No records found matching your criteria.
+                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                  Loading...
+                </TableCell>
+              </TableRow>
+            ) : filteredRecords.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                  No records found.
                 </TableCell>
               </TableRow>
             ) : (
@@ -173,10 +175,7 @@ export function ConsolidatedListTable() {
                   <TableCell>{record.academicYear}</TableCell>
                   <TableCell>{formatDate(record.lastInteractionDate)}</TableCell>
                   <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={statusStyles[record.status]}
-                    >
+                    <Badge variant="outline" className={statusStyles[record.status]}>
                       {record.status}
                     </Badge>
                   </TableCell>
@@ -187,7 +186,6 @@ export function ConsolidatedListTable() {
         </Table>
       </div>
 
-      {/* Results count */}
       <p className="text-sm text-muted-foreground">
         Showing {filteredRecords.length} of {records.length} records
       </p>
