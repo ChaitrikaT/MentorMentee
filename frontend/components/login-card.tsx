@@ -16,7 +16,14 @@ export function LoginCard() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    window.location.href = "/dashboard/consolidated-list"
+    // Store role in localStorage
+    localStorage.setItem('userRole', selectedRole)
+    localStorage.setItem('userEmail', email)
+    if (selectedRole === 'admin') {
+      window.location.href = '/dashboard/consolidated-list'
+    } else {
+      window.location.href = '/dashboard/interactions'
+    }
   }
 
   return (

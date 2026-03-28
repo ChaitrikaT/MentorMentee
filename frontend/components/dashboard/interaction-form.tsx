@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect  } from "react"
 import { format } from "date-fns"
 import { CalendarIcon, Users, Video, Phone } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -23,14 +23,18 @@ import {
 } from "@/components/ui/select"
 
 // Sample mentee data
-const mentees = [
-  { id: "1", name: "Aditya Sharma", year: "2nd Year", department: "CSE" },
-  { id: "2", name: "Priya Patel", year: "3rd Year", department: "ECE" },
-  { id: "3", name: "Rahul Kumar", year: "2nd Year", department: "ME" },
-  { id: "4", name: "Sneha Reddy", year: "4th Year", department: "CSE" },
-  { id: "5", name: "Vikram Singh", year: "3rd Year", department: "EE" },
-]
+const [mentees, setMentees] = useState<{id: string, name: string, year: string, department: string}[]>([])
 
+useEffect(() => {
+  fetch('http://localhost:5000/api/mentees')
+    .then(r => r.json())
+    .then(data => setMentees(data.map((m: any) => ({
+      id: String(m.id),
+      name: m.name,
+      year: m.academic_year,
+      department: m.department
+    }))))
+}, [])
 const interactionModes = [
   { value: "in-person", label: "In-Person", icon: Users },
   { value: "online", label: "Online", icon: Video },
@@ -50,19 +54,34 @@ export function InteractionForm() {
     e.preventDefault()
     setIsSubmitting(true)
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    try {
+      const response = await fetch('http://localhost:5000/api/interactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          allocation_id: selectedMentee,
+          date: interactionDate ? format(interactionDate, 'yyyy-MM-dd') : '',
+          mode: interactionMode,
+          notes: discussionNotes,
+          action_items: actionItems,
+          next_meeting_date: nextMeetingDate ? format(nextMeetingDate, 'yyyy-MM-dd') : ''
+        })
+      })
+      
+      if (response.ok) {
+        setSelectedMentee("")
+        setInteractionDate(undefined)
+        setInteractionMode("")
+        setDiscussionNotes("")
+        setActionItems("")
+        setNextMeetingDate(undefined)
+        alert("Interaction logged successfully!")
+      }
+    } catch (error) {
+      alert("Error connecting to server. Please try again.")
+    }
     
-    // Reset form
-    setSelectedMentee("")
-    setInteractionDate(undefined)
-    setInteractionMode("")
-    setDiscussionNotes("")
-    setActionItems("")
-    setNextMeetingDate(undefined)
     setIsSubmitting(false)
-    
-    alert("Interaction logged successfully!")
   }
 
   return (

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Search } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -30,80 +30,21 @@ type MentorMenteeRecord = {
   status: "Active" | "Inactive"
 }
 
-const records: MentorMenteeRecord[] = [
-  {
-    id: "1",
-    mentorName: "Dr. Rajesh Kumar",
-    department: "Computer Science",
-    menteeName: "Aditya Sharma",
-    academicYear: "2nd Year",
-    lastInteractionDate: "2026-03-20",
-    status: "Active",
-  },
-  {
-    id: "2",
-    mentorName: "Prof. Priya Nair",
-    department: "Electronics",
-    menteeName: "Sneha Patel",
-    academicYear: "3rd Year",
-    lastInteractionDate: "2026-03-18",
-    status: "Active",
-  },
-  {
-    id: "3",
-    mentorName: "Dr. Suresh Rao",
-    department: "Mechanical",
-    menteeName: "Vikram Singh",
-    academicYear: "1st Year",
-    lastInteractionDate: "2026-02-28",
-    status: "Inactive",
-  },
-  {
-    id: "4",
-    mentorName: "Prof. Anita Desai",
-    department: "Civil",
-    menteeName: "Meera Joshi",
-    academicYear: "4th Year",
-    lastInteractionDate: "2026-03-22",
-    status: "Active",
-  },
-  {
-    id: "5",
-    mentorName: "Dr. Kiran Shetty",
-    department: "Computer Science",
-    menteeName: "Rahul Menon",
-    academicYear: "2nd Year",
-    lastInteractionDate: "2026-01-15",
-    status: "Inactive",
-  },
-  {
-    id: "6",
-    mentorName: "Prof. Lakshmi Iyer",
-    department: "Electronics",
-    menteeName: "Arjun Nair",
-    academicYear: "3rd Year",
-    lastInteractionDate: "2026-03-25",
-    status: "Active",
-  },
-  {
-    id: "7",
-    mentorName: "Dr. Venkat Reddy",
-    department: "Mechanical",
-    menteeName: "Kavya Reddy",
-    academicYear: "1st Year",
-    lastInteractionDate: "2026-03-10",
-    status: "Active",
-  },
-  {
-    id: "8",
-    mentorName: "Prof. Maya Hegde",
-    department: "Civil",
-    menteeName: "Sanjay Kulkarni",
-    academicYear: "2nd Year",
-    lastInteractionDate: "2026-02-05",
-    status: "Inactive",
-  },
-]
+const [records, setRecords] = useState<MentorMenteeRecord[]>([])
+
+useEffect(() => {
+  fetch('http://localhost:5000/api/allocations')
+    .then(r => r.json())
+    .then(data => setRecords(data.map((a: any) => ({
+      id: String(a.id),
+      mentorName: a.mentor_name,
+      department: a.department,
+      menteeName: a.mentee_name,
+      academicYear: a.academic_year,
+      lastInteractionDate: a.last_interaction || '2026-01-01',
+      status: a.status as "Active" | "Inactive"
+    }))))
+}, [])
 
 const departments = ["All Departments", "Computer Science", "Electronics", "Mechanical", "Civil"]
 const years = ["All Years", "1st Year", "2nd Year", "3rd Year", "4th Year"]
