@@ -1,8 +1,4 @@
 ### Mentor-Mentee Management System
-Built for Navonmesha 2.0 — Igniting Intelligent Innovation Hackathon (2025-26)
-
----
-
 ## 🚀 What is MentorBridge?
 
 MentorBridge is a full-stack web application designed to streamline mentor-mentee management . It digitizes the entire mentorship workflow — from allocation to interaction tracking to intelligent insights.
@@ -14,6 +10,7 @@ MentorBridge is a full-stack web application designed to streamline mentor-mente
 | Feature | Description |
 |---------|-------------|
 | 🔐 Role-based Login | Separate Admin and Mentor views |
+| 👨‍🏫 Mentor Management | Admin can dynamically add new faculty mentors to the system |
 | 👥 Mentor-Mentee Allocation | Manual + AI-suggested smart allocation |
 | 📝 Interaction Logging | Mentors log sessions with notes, action items, next meeting dates |
 | 📋 Consolidated List | View all mentor-mentee pairs with interaction status |
@@ -55,6 +52,7 @@ MentorMentee/
 │       └── dashboard/
 │           ├── sidebar.tsx
 │           ├── allocations-table.tsx
+            ├── add-mentor-modal.tsx
 │           ├── add-allocation-modal.tsx
 │           ├── interaction-form.tsx
 │           ├── consolidated-list-table.tsx
@@ -144,6 +142,7 @@ Get a free Groq API key at: https://console.groq.com
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/api/mentors` | Get all mentors |
+| POST | `/api/mentors` | Add a new mentor to the database |
 | GET | `/api/mentees` | Get all mentees |
 | GET | `/api/allocations` | Get all allocations (filter by email for mentor view) |
 | POST | `/api/allocations` | Add new allocation |
