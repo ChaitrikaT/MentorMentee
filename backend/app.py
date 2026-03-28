@@ -1,3 +1,5 @@
+import sqlite3
+
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -16,11 +18,24 @@ CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 init_db()
 
 # ─── MENTORS ───────────────────────────────────────────
-@app.route('/api/mentors', methods=['GET'])
-def get_mentors():
+@app.route('/api/mentors', methods=['GET', 'POST'])
+def handle_mentors():
     db = get_db()
-    mentors = db.execute('SELECT * FROM mentors').fetchall()
-    return jsonify([dict(m) for m in mentors])
+    
+    if request.method == 'GET':
+        mentors = db.execute('SELECT * FROM mentors').fetchall()
+        return jsonify([dict(m) for m in mentors])
+        
+    if request.method == 'POST':
+        data = request.json
+        try:
+            db.execute('INSERT INTO mentors (name, email, department) VALUES (?, ?, ?)',
+                       [data['name'], data['email'], data['department']])
+            db.commit()
+            return jsonify({'message': 'Mentor added successfully!'}), 201
+        except sqlite3.IntegrityError:
+            # This catches the error if the email already exists in the DB!
+            return jsonify({'error': 'A mentor with this email already exists!'}), 400
 
 # ─── MENTEES ───────────────────────────────────────────
 @app.route('/api/mentees', methods=['GET'])

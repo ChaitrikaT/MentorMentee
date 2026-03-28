@@ -123,3 +123,7 @@
     @apply bg-background text-foreground;
   }
 }
+/* The Nuclear Option: Hide Next.js Dev Tools */
+nextjs-portal {
+  display: none !important;
+}

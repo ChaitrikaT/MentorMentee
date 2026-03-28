@@ -35,18 +35,11 @@ export function ConsolidatedListTable() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedDepartment, setSelectedDepartment] = useState("All Departments")
   const [selectedYear, setSelectedYear] = useState("All Years")
+  const [selectedMentorFilter, setSelectedMentorFilter] = useState("All Mentors") // NEW STATE!
   const [loading, setLoading] = useState(true)
 
-useEffect(() => {
-    const role = localStorage.getItem("userRole");
-    const email = localStorage.getItem("userEmail");
-    
-    let url = 'http://localhost:5000/api/allocations';
-    if (role === 'mentor' && email) {
-      url += `?email=${encodeURIComponent(email)}`;
-    }
-
-    fetch(url)
+  useEffect(() => {
+    fetch('http://localhost:5000/api/allocations')
       .then(r => r.json())
       .then(data => {
         setRecords(data.map((a: any) => ({
@@ -61,7 +54,6 @@ useEffect(() => {
         setLoading(false)
       })
       .catch(() => {
-        // YOUR ORIGINAL FALLBACK IS BACK!
         setRecords([
           { id: "1", mentorName: "Dr. Kavitha Rao", department: "AI & ML", menteeName: "Aditya Sharma", academicYear: "1st Year", lastInteractionDate: "2026-03-20", status: "Active" },
           { id: "2", mentorName: "Prof. Anand Bhat", department: "AI & ML", menteeName: "Rahul Menon", academicYear: "2nd Year", lastInteractionDate: "2026-03-25", status: "Active" },
@@ -70,14 +62,23 @@ useEffect(() => {
       })
   }, [])
 
+  // Dynamically pull unique mentor names from the records!
+  const uniqueMentors = useMemo(() => {
+    const names = Array.from(new Set(records.map(r => r.mentorName)))
+    return ["All Mentors", ...names.sort()]
+  }, [records])
+
+  // Updated filter logic to include the new dropdown
   const filteredRecords = useMemo(() => records.filter((record) => {
     const matchesSearch = searchQuery === "" ||
       record.mentorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       record.menteeName.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesDepartment = selectedDepartment === "All Departments" || record.department === selectedDepartment
     const matchesYear = selectedYear === "All Years" || record.academicYear === selectedYear
-    return matchesSearch && matchesDepartment && matchesYear
-  }), [records, searchQuery, selectedDepartment, selectedYear])
+    const matchesMentor = selectedMentorFilter === "All Mentors" || record.mentorName === selectedMentorFilter
+    
+    return matchesSearch && matchesDepartment && matchesYear && matchesMentor
+  }), [records, searchQuery, selectedDepartment, selectedYear, selectedMentorFilter])
 
   return (
     <div className="space-y-6">
@@ -93,19 +94,23 @@ useEffect(() => {
         </Button>
       </div>
 
-      {/* Filters */}
+      {/* Filters (Now with 3 dropdowns!) */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Search by mentor or mentee name..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
+          <Select value={selectedMentorFilter} onValueChange={setSelectedMentorFilter}>
+            <SelectTrigger className="w-[180px] bg-card"><SelectValue placeholder="Mentor" /></SelectTrigger>
+            <SelectContent>{uniqueMentors.map((mentor) => (<SelectItem key={mentor} value={mentor}>{mentor}</SelectItem>))}</SelectContent>
+          </Select>
           <Select value={selectedYear} onValueChange={setSelectedYear}>
-            <SelectTrigger className="w-[140px] bg-card"><SelectValue placeholder="Year" /></SelectTrigger>
+            <SelectTrigger className="w-[120px] bg-card"><SelectValue placeholder="Year" /></SelectTrigger>
             <SelectContent>{years.map((year) => (<SelectItem key={year} value={year}>{year}</SelectItem>))}</SelectContent>
           </Select>
           <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
-            <SelectTrigger className="w-[180px] bg-card"><SelectValue placeholder="Department" /></SelectTrigger>
+            <SelectTrigger className="w-[160px] bg-card"><SelectValue placeholder="Department" /></SelectTrigger>
             <SelectContent>{departments.map((dept) => (<SelectItem key={dept} value={dept}>{dept}</SelectItem>))}</SelectContent>
           </Select>
         </div>

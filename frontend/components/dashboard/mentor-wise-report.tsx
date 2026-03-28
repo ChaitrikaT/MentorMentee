@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Search, Users, MessageSquare, TrendingUp, Download } from "lucide-react"
+import { Search, Users, MessageSquare, TrendingUp, Download, Plus } from "lucide-react"
+import { AddMentorModal } from "./add-mentor-modal"
 
 export function MentorWiseReport() {
   const [mentorData, setMentorData] = useState<any[]>([])
@@ -14,8 +15,9 @@ export function MentorWiseReport() {
   const [loading, setLoading] = useState(true)
   const [role, setRole] = useState<string>("admin")
   const [email, setEmail] = useState<string>("")
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
-  useEffect(() => {
+  const fetchMentors = () => {
     const storedRole = localStorage.getItem("userRole") || "admin"
     const storedEmail = localStorage.getItem("userEmail") || ""
     setRole(storedRole)
@@ -30,6 +32,10 @@ export function MentorWiseReport() {
       .then(r => r.json())
       .then(data => { setMentorData(data); setLoading(false) })
       .catch(() => { setLoading(false) })
+  }
+
+  useEffect(() => {
+    fetchMentors()
   }, [])
 
   const handleDownloadPDF = () => {
@@ -54,9 +60,15 @@ export function MentorWiseReport() {
 
   return (
     <div className="space-y-6">
-      {/* Download button */}
-      <div className="flex justify-end">
-        <Button onClick={handleDownloadPDF} className="gap-2">
+      {/* Top Action Buttons */}
+      <div className="flex justify-end gap-3">
+        {!isMentorView && (
+          <Button onClick={() => setIsModalOpen(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Add Mentor
+          </Button>
+        )}
+        <Button onClick={handleDownloadPDF} variant="outline" className="gap-2 bg-card">
           <Download className="h-4 w-4" />
           {isMentorView ? "Download My Mentee List" : "Download PDF"}
         </Button>
@@ -175,6 +187,12 @@ export function MentorWiseReport() {
           </p>
         </CardContent>
       </Card>
+
+      <AddMentorModal 
+        open={isModalOpen} 
+        onOpenChange={setIsModalOpen} 
+        onSuccess={fetchMentors} 
+      />
     </div>
   )
 }
