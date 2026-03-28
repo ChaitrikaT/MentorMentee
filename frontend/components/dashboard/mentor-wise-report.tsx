@@ -12,29 +12,34 @@ export function MentorWiseReport() {
   const [mentorData, setMentorData] = useState<any[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [loading, setLoading] = useState(true)
+  const [role, setRole] = useState<string>("admin")
+  const [email, setEmail] = useState<string>("")
 
-useEffect(() => {
-    const role = localStorage.getItem("userRole");
-    const email = localStorage.getItem("userEmail");
-    
-    let url = 'http://localhost:5000/api/reports/mentorwise';
-    if (role === 'mentor' && email) {
-      url += `?email=${encodeURIComponent(email)}`;
+  useEffect(() => {
+    const storedRole = localStorage.getItem("userRole") || "admin"
+    const storedEmail = localStorage.getItem("userEmail") || ""
+    setRole(storedRole)
+    setEmail(storedEmail)
+
+    let url = 'http://localhost:5000/api/reports/mentorwise'
+    if (storedRole === 'mentor' && storedEmail) {
+      url += `?email=${encodeURIComponent(storedEmail)}`
     }
 
     fetch(url)
       .then(r => r.json())
       .then(data => { setMentorData(data); setLoading(false) })
-      .catch(() => {
-        setMentorData([
-          { id: 1, name: "Dr. Kavitha Rao", department: "AI & ML", mentee_count: 2, total_interactions: 2, last_active: "2026-03-20" },
-        ])
-        setLoading(false)
-      })
+      .catch(() => { setLoading(false) })
   }, [])
 
   const handleDownloadPDF = () => {
-    window.open('http://localhost:5000/api/reports/pdf/mentorwise', '_blank')
+    if (role === 'mentor' && email) {
+      // Mentor downloads only their own mentee list
+      window.open(`http://localhost:5000/api/reports/pdf/mentor-mentees?email=${encodeURIComponent(email)}`, '_blank')
+    } else {
+      // Admin downloads full mentor-wise report
+      window.open('http://localhost:5000/api/reports/pdf/mentorwise', '_blank')
+    }
   }
 
   const filteredMentors = mentorData.filter(m =>
@@ -45,30 +50,32 @@ useEffect(() => {
   const totalInteractions = mentorData.reduce((sum, m) => sum + (m.total_interactions || 0), 0)
   const totalMentees = mentorData.reduce((sum, m) => sum + (m.mentee_count || 0), 0)
 
+  const isMentorView = role === 'mentor'
+
   return (
     <div className="space-y-6">
       {/* Download button */}
       <div className="flex justify-end">
         <Button onClick={handleDownloadPDF} className="gap-2">
           <Download className="h-4 w-4" />
-          Download PDF
+          {isMentorView ? "Download My Mentee List" : "Download PDF"}
         </Button>
       </div>
 
-      {/* Summary Cards */}
+      {/* Summary Cards — context aware */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardDescription>Total Mentors</CardDescription>
+            <CardDescription>{isMentorView ? "My Profile" : "Total Mentors"}</CardDescription>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary">{mentorData.length}</div>
+            <div className="text-2xl font-bold text-primary">{isMentorView ? "1" : mentorData.length}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardDescription>Total Mentees</CardDescription>
+            <CardDescription>{isMentorView ? "My Mentees" : "Total Mentees"}</CardDescription>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -77,7 +84,7 @@ useEffect(() => {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardDescription>Total Interactions</CardDescription>
+            <CardDescription>{isMentorView ? "My Interactions" : "Total Interactions"}</CardDescription>
             <MessageSquare className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -97,23 +104,29 @@ useEffect(() => {
         </Card>
       </div>
 
-      {/* Mentor Table */}
+      {/* Table */}
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <CardTitle>Mentor Summary</CardTitle>
-              <CardDescription>Overview of all mentors and their interaction counts</CardDescription>
+              <CardTitle>{isMentorView ? "My Mentee Summary" : "Mentor Summary"}</CardTitle>
+              <CardDescription>
+                {isMentorView
+                  ? "Your assigned mentees and interaction counts"
+                  : "Overview of all mentors and their interaction counts"}
+              </CardDescription>
             </div>
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search mentors..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
-            </div>
+            {!isMentorView && (
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search mentors..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -121,7 +134,7 @@ useEffect(() => {
             <Table>
               <TableHeader>
                 <TableRow className="bg-secondary/50">
-                  <TableHead>Mentor Name</TableHead>
+                  <TableHead>{isMentorView ? "Mentor Name" : "Mentor Name"}</TableHead>
                   <TableHead>Department</TableHead>
                   <TableHead className="text-center">Mentees</TableHead>
                   <TableHead className="text-center">Total Interactions</TableHead>
@@ -158,7 +171,7 @@ useEffect(() => {
             </Table>
           </div>
           <p className="mt-4 text-sm text-muted-foreground">
-            Showing {filteredMentors.length} of {mentorData.length} mentors
+            Showing {filteredMentors.length} of {mentorData.length} {isMentorView ? "entries" : "mentors"}
           </p>
         </CardContent>
       </Card>

@@ -514,5 +514,89 @@ def suggest_allocation():
             })
     return jsonify(suggestions)
 
+@app.route('/api/reports/pdf/mentor-mentees', methods=['GET'])
+def pdf_mentor_mentees():
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib import colors
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib.units import cm
+    import io
+
+    email = request.args.get('email', '')
+    db = get_db()
+
+    # Get mentor info
+    mentor = db.execute('SELECT * FROM mentors WHERE email = ?', [email]).fetchone()
+
+    # Get their mentees with interaction counts
+    mentees = db.execute('''
+        SELECT me.name, me.academic_year, me.usn,
+               COUNT(i.id) as total_interactions,
+               MAX(i.date) as last_interaction
+        FROM allocations a
+        JOIN mentees me ON a.mentee_id = me.id
+        JOIN mentors mr ON a.mentor_id = mr.id
+        LEFT JOIN interactions i ON a.id = i.allocation_id
+        WHERE mr.email = ?
+        GROUP BY me.id
+        ORDER BY me.academic_year, me.name
+    ''', [email]).fetchall()
+
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=2*cm, bottomMargin=2*cm)
+    styles = getSampleStyleSheet()
+    story = []
+
+    # Title
+    title_style = ParagraphStyle('CustomTitle', parent=styles['Title'],
+                                  fontSize=16, textColor=colors.HexColor('#1e40af'))
+    story.append(Paragraph("MentorBridge - Mentor Mentee Report", title_style))
+    story.append(Spacer(1, 0.3*cm))
+
+    # Mentor info
+    if mentor:
+        story.append(Paragraph(f"<b>Mentor:</b> {mentor['name']}", styles['Normal']))
+        story.append(Paragraph(f"<b>Department:</b> {mentor['department']}", styles['Normal']))
+        story.append(Paragraph(f"<b>Email:</b> {mentor['email']}", styles['Normal']))
+        story.append(Spacer(1, 0.5*cm))
+
+    story.append(Paragraph(f"<b>Total Mentees Assigned: {len(mentees)}</b>", styles['Normal']))
+    story.append(Spacer(1, 0.3*cm))
+
+    # Mentees table
+    table_data = [['Sl.No', 'Student Name', 'USN', 'Year', 'Interactions', 'Last Interaction']]
+    for idx, m in enumerate(mentees, 1):
+        table_data.append([
+            str(idx),
+            m['name'],
+            m['usn'] or '-',
+            m['academic_year'],
+            str(m['total_interactions']),
+            m['last_interaction'] or 'No interaction yet'
+        ])
+
+    t = Table(table_data, colWidths=[1.2*cm, 6*cm, 3.5*cm, 2.5*cm, 2.5*cm, 3.5*cm])
+    t.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1e40af')),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,-1), 9),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor('#eff6ff')]),
+        ('PADDING', (0,0), (-1,-1), 6),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+    ]))
+    story.append(t)
+
+    doc.build(story)
+    buffer.seek(0)
+
+    mentor_name = mentor['name'].replace(' ', '_') if mentor else 'mentor'
+    return send_file(buffer, mimetype='application/pdf',
+                     as_attachment=True,
+                     download_name=f'{mentor_name}_mentee_list.pdf')
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

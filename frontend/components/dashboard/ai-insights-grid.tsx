@@ -44,64 +44,62 @@ const statusConfig = {
   }
 }
 
-function formatDate(dateString: string) {
-  return new Date(dateString).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric"
-  })
+function safeDaysSince(dateString: string | null): number {
+  if (!dateString || dateString === 'Never') return 999
+  const d = new Date(dateString)
+  if (isNaN(d.getTime())) return 999
+  return Math.floor((new Date(2026, 2, 28).getTime() - d.getTime()) / (1000 * 60 * 60 * 24))
 }
+
+function formatDate(dateString: string | null): string {
+  if (!dateString || dateString === 'Never') return 'No interaction yet'
+  const d = new Date(dateString)
+  if (isNaN(d.getTime())) return 'No interaction yet'
+  return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+}
+
+type FilterTab = "urgent" | "all" | "on-track"
 
 export function AIInsightsGrid() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [insights, setInsights] = useState<StudentInsight[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<FilterTab>("urgent")
 
   const handleRefresh = async () => {
     setIsRefreshing(true)
     setError(null)
     try {
-      // Grab role and email from local storage
-      const role = localStorage.getItem("userRole");
-      const email = localStorage.getItem("userEmail");
-      
-      // Build the URL based on who is logged in
-      let url = 'http://localhost:5000/api/ai/insights';
+      const role = localStorage.getItem("userRole")
+      const email = localStorage.getItem("userEmail")
+      let url = 'http://localhost:5000/api/ai/insights'
       if (role === 'mentor' && email) {
-        url += `?email=${encodeURIComponent(email)}`;
+        url += `?email=${encodeURIComponent(email)}`
       }
-
       const response = await fetch(url)
-      if (!response.ok) throw new Error("Network response was not ok")
+      if (!response.ok) throw new Error("Server error")
       const data = await response.json()
-      
       setInsights(data.map((item: any) => ({
         id: String(item.id || Math.random()),
         menteeName: item.mentee_name,
         mentorName: item.mentor_name,
-        lastInteractionDate: item.last_interaction || '2026-01-01',
-        daysSinceInteraction: Math.floor(
-          (new Date().getTime() - new Date(item.last_interaction || '2026-01-01').getTime())
-          / (1000 * 60 * 60 * 24)
-        ),
-        status: item.status === 'At Risk' 
-          ? 'at-risk' 
-          : item.status === 'Needs Attention' 
-          ? 'needs-attention' 
+        lastInteractionDate: item.last_interaction || null,
+        daysSinceInteraction: safeDaysSince(item.last_interaction),
+        status: item.status === 'At Risk'
+          ? 'at-risk'
+          : item.status === 'Needs Attention'
+          ? 'needs-attention'
           : 'on-track',
         aiSuggestion: item.suggestion
       })))
     } catch (error) {
-      setError("Could not connect to server. Showing sample data.")
-      console.error('Real Error:', error);
+      setError("Could not connect to server.")
+      console.error('AI Insights error:', error)
     }
     setIsRefreshing(false)
   }
 
-  // Load on page open
-  useEffect(() => {
-    handleRefresh()
-  }, [])
+  useEffect(() => { handleRefresh() }, [])
 
   const sortedInsights = [...insights].sort((a, b) => {
     const priority = { "at-risk": 0, "needs-attention": 1, "on-track": 2 }
@@ -112,6 +110,12 @@ export function AIInsightsGrid() {
   const needsAttentionCount = insights.filter(i => i.status === "needs-attention").length
   const onTrackCount = insights.filter(i => i.status === "on-track").length
 
+  const filteredInsights = sortedInsights.filter(i => {
+    if (activeTab === "urgent") return i.status === "at-risk" || i.status === "needs-attention"
+    if (activeTab === "on-track") return i.status === "on-track"
+    return true
+  })
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -120,33 +124,25 @@ export function AIInsightsGrid() {
           <h1 className="text-2xl font-bold text-foreground">AI Insights</h1>
           <p className="text-muted-foreground">AI-powered analysis of mentor-mentee engagement</p>
         </div>
-        <Button
-          onClick={handleRefresh}
-          disabled={isRefreshing}
-          className="gap-2"
-        >
+        <Button onClick={handleRefresh} disabled={isRefreshing} className="gap-2">
           <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
           {isRefreshing ? "Refreshing..." : "Refresh Insights"}
         </Button>
       </div>
 
-      {/* Error banner */}
       {error && (
         <div className="rounded-lg bg-yellow-50 border border-yellow-200 px-4 py-3 text-sm text-yellow-800">
           {error}
         </div>
       )}
 
-      {/* Loading state */}
       {isRefreshing && insights.length === 0 && (
-        <div className="text-center py-12 text-muted-foreground">
-          Loading AI insights...
-        </div>
+        <div className="text-center py-12 text-muted-foreground">Analyzing mentor-mentee data...</div>
       )}
 
-      {/* Summary Stats */}
       {insights.length > 0 && (
         <>
+          {/* Summary Stats */}
           <div className="grid grid-cols-3 gap-4">
             <div className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 p-4">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
@@ -177,29 +173,62 @@ export function AIInsightsGrid() {
             </div>
           </div>
 
-          {/* Student Cards Grid */}
+          {/* Filter Tabs */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => setActiveTab("urgent")}
+              className={cn(
+                "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                activeTab === "urgent"
+                  ? "bg-red-100 text-red-700 border border-red-200"
+                  : "bg-secondary text-muted-foreground hover:text-foreground"
+              )}
+            >
+              ⚠️ Needs Action ({atRiskCount + needsAttentionCount})
+            </button>
+            <button
+              onClick={() => setActiveTab("on-track")}
+              className={cn(
+                "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                activeTab === "on-track"
+                  ? "bg-green-100 text-green-700 border border-green-200"
+                  : "bg-secondary text-muted-foreground hover:text-foreground"
+              )}
+            >
+              ✅ On Track ({onTrackCount})
+            </button>
+            <button
+              onClick={() => setActiveTab("all")}
+              className={cn(
+                "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                activeTab === "all"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary text-muted-foreground hover:text-foreground"
+              )}
+            >
+              All ({insights.length})
+            </button>
+          </div>
+
+          {/* Cards */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {sortedInsights.map((insight) => {
+            {filteredInsights.map((insight) => {
               const config = statusConfig[insight.status]
               const StatusIcon = config.icon
+              const days = insight.daysSinceInteraction
+              const daysLabel = days >= 999 ? "Never" : `${days} days ago`
+
               return (
                 <div
                   key={insight.id}
-                  className={cn(
-                    "overflow-hidden rounded-xl border transition-shadow hover:shadow-md",
-                    config.bgColor
-                  )}
+                  className={cn("overflow-hidden rounded-xl border transition-shadow hover:shadow-md", config.bgColor)}
                 >
                   <div className={cn("flex items-center justify-between px-4 py-3", config.headerBg)}>
                     <div className="flex items-center gap-2">
                       <StatusIcon className={cn("h-4 w-4", config.iconColor)} />
-                      <span className={cn("text-sm font-medium", config.textColor)}>
-                        {config.label}
-                      </span>
+                      <span className={cn("text-sm font-medium", config.textColor)}>{config.label}</span>
                     </div>
-                    <span className={cn("text-xs", config.textColor)}>
-                      {insight.daysSinceInteraction} days ago
-                    </span>
+                    <span className={cn("text-xs", config.textColor)}>{daysLabel}</span>
                   </div>
                   <div className="space-y-3 p-4">
                     <div>
@@ -227,6 +256,12 @@ export function AIInsightsGrid() {
               )
             })}
           </div>
+
+          {filteredInsights.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground">
+              No students in this category 🎉
+            </div>
+          )}
         </>
       )}
     </div>
