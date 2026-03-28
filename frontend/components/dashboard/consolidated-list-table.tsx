@@ -102,15 +102,15 @@ export function ConsolidatedListTable() {
         </div>
         <div className="flex flex-wrap gap-3">
           <Select value={selectedMentorFilter} onValueChange={setSelectedMentorFilter}>
-            <SelectTrigger className="w-[180px] bg-card"><SelectValue placeholder="Mentor" /></SelectTrigger>
+            <SelectTrigger className="w-45 bg-card"><SelectValue placeholder="Mentor" /></SelectTrigger>
             <SelectContent>{uniqueMentors.map((mentor) => (<SelectItem key={mentor} value={mentor}>{mentor}</SelectItem>))}</SelectContent>
           </Select>
           <Select value={selectedYear} onValueChange={setSelectedYear}>
-            <SelectTrigger className="w-[120px] bg-card"><SelectValue placeholder="Year" /></SelectTrigger>
+            <SelectTrigger className="w-30 bg-card"><SelectValue placeholder="Year" /></SelectTrigger>
             <SelectContent>{years.map((year) => (<SelectItem key={year} value={year}>{year}</SelectItem>))}</SelectContent>
           </Select>
           <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
-            <SelectTrigger className="w-[160px] bg-card"><SelectValue placeholder="Department" /></SelectTrigger>
+            <SelectTrigger className="w-40 bg-card"><SelectValue placeholder="Department" /></SelectTrigger>
             <SelectContent>{departments.map((dept) => (<SelectItem key={dept} value={dept}>{dept}</SelectItem>))}</SelectContent>
           </Select>
         </div>
