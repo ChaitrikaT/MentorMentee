@@ -81,7 +81,7 @@ export function AIInsightsGrid() {
       })))
     } catch (error) {
       setError("Could not connect to server. Showing sample data.")
-      console.error('Failed to fetch insights')
+      console.error('Real Error:', error);
     }
     setIsRefreshing(false)
   }

@@ -1,118 +1,53 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { Search, Users, MessageSquare, TrendingUp } from "lucide-react"
-
-// Sample mentor data
-const mentorData = [
-  { 
-    id: "1", 
-    name: "Dr. Ramesh Kumar", 
-    department: "CSE", 
-    menteeCount: 8, 
-    totalInteractions: 64, 
-    avgInteractionsPerMentee: 8,
-    lastActive: "2024-03-18",
-    status: "active"
-  },
-  { 
-    id: "2", 
-    name: "Prof. Suresh Rao", 
-    department: "ECE", 
-    menteeCount: 6, 
-    totalInteractions: 42, 
-    avgInteractionsPerMentee: 7,
-    lastActive: "2024-03-15",
-    status: "active"
-  },
-  { 
-    id: "3", 
-    name: "Dr. Anita Menon", 
-    department: "ME", 
-    menteeCount: 7, 
-    totalInteractions: 56, 
-    avgInteractionsPerMentee: 8,
-    lastActive: "2024-03-17",
-    status: "active"
-  },
-  { 
-    id: "4", 
-    name: "Prof. Mahesh Shetty", 
-    department: "CE", 
-    menteeCount: 5, 
-    totalInteractions: 35, 
-    avgInteractionsPerMentee: 7,
-    lastActive: "2024-03-10",
-    status: "active"
-  },
-  { 
-    id: "5", 
-    name: "Dr. Priya Sharma", 
-    department: "CSE", 
-    menteeCount: 6, 
-    totalInteractions: 48, 
-    avgInteractionsPerMentee: 8,
-    lastActive: "2024-03-16",
-    status: "active"
-  },
-  { 
-    id: "6", 
-    name: "Prof. Kiran Bhat", 
-    department: "ECE", 
-    menteeCount: 4, 
-    totalInteractions: 12, 
-    avgInteractionsPerMentee: 3,
-    lastActive: "2024-02-28",
-    status: "inactive"
-  },
-  { 
-    id: "7", 
-    name: "Dr. Sunita Kamath", 
-    department: "ME", 
-    menteeCount: 7, 
-    totalInteractions: 49, 
-    avgInteractionsPerMentee: 7,
-    lastActive: "2024-03-14",
-    status: "active"
-  },
-  { 
-    id: "8", 
-    name: "Prof. Arun Nayak", 
-    department: "CE", 
-    menteeCount: 5, 
-    totalInteractions: 15, 
-    avgInteractionsPerMentee: 3,
-    lastActive: "2024-02-20",
-    status: "inactive"
-  },
-]
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Search, Users, MessageSquare, TrendingUp, Download } from "lucide-react"
 
 export function MentorWiseReport() {
+  const [mentorData, setMentorData] = useState<any[]>([])
   const [searchQuery, setSearchQuery] = useState("")
+  const [loading, setLoading] = useState(true)
 
-  const filteredMentors = mentorData.filter(mentor =>
-    mentor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    mentor.department.toLowerCase().includes(searchQuery.toLowerCase())
+  useEffect(() => {
+    fetch('http://localhost:5000/api/reports/mentorwise')
+      .then(r => r.json())
+      .then(data => { setMentorData(data); setLoading(false) })
+      .catch(() => {
+        setMentorData([
+          { id: 1, name: "Dr. Kavitha Rao", department: "AI & ML", mentee_count: 2, total_interactions: 2, last_active: "2026-03-20" },
+          { id: 2, name: "Prof. Anand Bhat", department: "AI & ML", mentee_count: 2, total_interactions: 1, last_active: "2026-03-25" },
+        ])
+        setLoading(false)
+      })
+  }, [])
+
+  const handleDownloadPDF = () => {
+    window.open('http://localhost:5000/api/reports/pdf/mentorwise', '_blank')
+  }
+
+  const filteredMentors = mentorData.filter(m =>
+    m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    m.department.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const totalMentors = mentorData.length
-  const activeMentors = mentorData.filter(m => m.status === "active").length
-  const totalInteractions = mentorData.reduce((sum, m) => sum + m.totalInteractions, 0)
-  const totalMentees = mentorData.reduce((sum, m) => sum + m.menteeCount, 0)
+  const totalInteractions = mentorData.reduce((sum, m) => sum + (m.total_interactions || 0), 0)
+  const totalMentees = mentorData.reduce((sum, m) => sum + (m.mentee_count || 0), 0)
 
   return (
     <div className="space-y-6">
+      {/* Download button */}
+      <div className="flex justify-end">
+        <Button onClick={handleDownloadPDF} className="gap-2">
+          <Download className="h-4 w-4" />
+          Download PDF
+        </Button>
+      </div>
+
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
@@ -121,11 +56,9 @@ export function MentorWiseReport() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary">{totalMentors}</div>
-            <p className="text-xs text-muted-foreground">{activeMentors} active</p>
+            <div className="text-2xl font-bold text-primary">{mentorData.length}</div>
           </CardContent>
         </Card>
-        
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardDescription>Total Mentees</CardDescription>
@@ -133,10 +66,8 @@ export function MentorWiseReport() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-primary">{totalMentees}</div>
-            <p className="text-xs text-muted-foreground">Across all mentors</p>
           </CardContent>
         </Card>
-        
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardDescription>Total Interactions</CardDescription>
@@ -144,18 +75,17 @@ export function MentorWiseReport() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-primary">{totalInteractions}</div>
-            <p className="text-xs text-muted-foreground">All time</p>
           </CardContent>
         </Card>
-        
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardDescription>Avg per Mentor</CardDescription>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary">{Math.round(totalInteractions / totalMentors)}</div>
-            <p className="text-xs text-muted-foreground">Interactions</p>
+            <div className="text-2xl font-bold text-primary">
+              {mentorData.length ? Math.round(totalInteractions / mentorData.length) : 0}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -184,39 +114,35 @@ export function MentorWiseReport() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-secondary/50">
-                  <TableHead className="font-medium">Mentor Name</TableHead>
-                  <TableHead className="font-medium">Department</TableHead>
-                  <TableHead className="font-medium text-center">Mentees</TableHead>
-                  <TableHead className="font-medium text-center">Total Interactions</TableHead>
-                  <TableHead className="font-medium text-center">Avg/Mentee</TableHead>
-                  <TableHead className="font-medium">Last Active</TableHead>
-                  <TableHead className="font-medium text-center">Status</TableHead>
+                  <TableHead>Mentor Name</TableHead>
+                  <TableHead>Department</TableHead>
+                  <TableHead className="text-center">Mentees</TableHead>
+                  <TableHead className="text-center">Total Interactions</TableHead>
+                  <TableHead>Last Active</TableHead>
+                  <TableHead className="text-center">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredMentors.map((mentor) => (
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">Loading...</TableCell>
+                  </TableRow>
+                ) : filteredMentors.map((mentor) => (
                   <TableRow key={mentor.id}>
-                    <TableCell className="font-medium text-foreground">{mentor.name}</TableCell>
+                    <TableCell className="font-medium">{mentor.name}</TableCell>
                     <TableCell className="text-muted-foreground">{mentor.department}</TableCell>
-                    <TableCell className="text-center">{mentor.menteeCount}</TableCell>
-                    <TableCell className="text-center font-medium">{mentor.totalInteractions}</TableCell>
-                    <TableCell className="text-center">{mentor.avgInteractionsPerMentee}</TableCell>
+                    <TableCell className="text-center">{mentor.mentee_count}</TableCell>
+                    <TableCell className="text-center font-medium">{mentor.total_interactions}</TableCell>
                     <TableCell className="text-muted-foreground">
-                      {new Date(mentor.lastActive).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric"
-                      })}
+                      {mentor.last_active
+                        ? new Date(mentor.last_active).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })
+                        : 'No interactions'}
                     </TableCell>
                     <TableCell className="text-center">
-                      <Badge 
-                        variant={mentor.status === "active" ? "default" : "destructive"}
-                        className={mentor.status === "active" 
-                          ? "bg-green-100 text-green-700 hover:bg-green-100" 
-                          : "bg-red-100 text-red-700 hover:bg-red-100"
-                        }
-                      >
-                        {mentor.status === "active" ? "Active" : "Inactive"}
+                      <Badge className={mentor.total_interactions > 0
+                        ? "bg-green-100 text-green-700 hover:bg-green-100"
+                        : "bg-red-100 text-red-700 hover:bg-red-100"}>
+                        {mentor.total_interactions > 0 ? "Active" : "Inactive"}
                       </Badge>
                     </TableCell>
                   </TableRow>
@@ -224,7 +150,6 @@ export function MentorWiseReport() {
               </TableBody>
             </Table>
           </div>
-          
           <p className="mt-4 text-sm text-muted-foreground">
             Showing {filteredMentors.length} of {mentorData.length} mentors
           </p>

@@ -1,23 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogDescription,
+  DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
+import { Sparkles } from "lucide-react"
 
 type AddAllocationModalProps = {
   open: boolean
@@ -25,36 +16,61 @@ type AddAllocationModalProps = {
   onAdd: (mentorId: string, menteeId: string) => void
 }
 
-const mentors = [
-  { id: "m1", name: "Dr. Rajesh Kumar", department: "Computer Science" },
-  { id: "m2", name: "Prof. Priya Nair", department: "Electronics" },
-  { id: "m3", name: "Dr. Suresh Rao", department: "Mechanical" },
-  { id: "m4", name: "Prof. Anita Desai", department: "Civil" },
-  { id: "m5", name: "Dr. Kiran Shetty", department: "Computer Science" },
-]
-
-const mentees = [
-  { id: "s1", name: "Aditya Sharma", year: "2nd Year" },
-  { id: "s2", name: "Sneha Patel", year: "3rd Year" },
-  { id: "s3", name: "Vikram Singh", year: "1st Year" },
-  { id: "s4", name: "Meera Joshi", year: "4th Year" },
-  { id: "s5", name: "Rahul Menon", year: "2nd Year" },
-  { id: "s6", name: "Priya Verma", year: "1st Year" },
-]
-
-export function AddAllocationModal({
-  open,
-  onOpenChange,
-  onAdd,
-}: AddAllocationModalProps) {
+export function AddAllocationModal({ open, onOpenChange, onAdd }: AddAllocationModalProps) {
+  const [mentors, setMentors] = useState<any[]>([])
+  const [mentees, setMentees] = useState<any[]>([])
   const [selectedMentor, setSelectedMentor] = useState("")
   const [selectedMentee, setSelectedMentee] = useState("")
+  const [suggesting, setSuggesting] = useState(false)
+  const [suggestionReason, setSuggestionReason] = useState("")
+
+  useEffect(() => {
+    if (!open) return
+    fetch('http://localhost:5000/api/mentors')
+      .then(r => r.json())
+      .then(data => setMentors(data))
+      .catch(() => setMentors([
+        { id: 1, name: "Dr. Kavitha Rao", department: "AI & ML" },
+        { id: 2, name: "Prof. Anand Bhat", department: "AI & ML" },
+        { id: 3, name: "Dr. Priya Nair", department: "AI & ML" },
+        { id: 4, name: "Prof. Suresh Hegde", department: "AI & ML" },
+      ]))
+
+    fetch('http://localhost:5000/api/mentees')
+      .then(r => r.json())
+      .then(data => setMentees(data))
+      .catch(() => setMentees([
+        { id: 1, name: "Aditya Sharma", academic_year: "1st Year", department: "AI & ML" },
+        { id: 2, name: "Sneha Patel", academic_year: "1st Year", department: "AI & ML" },
+      ]))
+  }, [open])
+
+  const handleAISuggest = async () => {
+    setSuggesting(true)
+    setSuggestionReason("")
+    try {
+      const response = await fetch('http://localhost:5000/api/allocations/suggest')
+      const suggestions = await response.json()
+      if (suggestions.length > 0) {
+        const first = suggestions[0]
+        setSelectedMentor(String(first.mentor_id))
+        setSelectedMentee(String(first.mentee_id))
+        setSuggestionReason(`AI Suggestion: ${first.reason}`)
+      } else {
+        setSuggestionReason("No unallocated mentees found!")
+      }
+    } catch {
+      setSuggestionReason("Could not fetch suggestions.")
+    }
+    setSuggesting(false)
+  }
 
   const handleSubmit = () => {
     if (selectedMentor && selectedMentee) {
       onAdd(selectedMentor, selectedMentee)
       setSelectedMentor("")
       setSelectedMentee("")
+      setSuggestionReason("")
     }
   }
 
@@ -62,6 +78,7 @@ export function AddAllocationModal({
     if (!open) {
       setSelectedMentor("")
       setSelectedMentee("")
+      setSuggestionReason("")
     }
     onOpenChange(open)
   }
@@ -72,11 +89,29 @@ export function AddAllocationModal({
         <DialogHeader>
           <DialogTitle>Add New Allocation</DialogTitle>
           <DialogDescription>
-            Select a mentor and mentee to create a new allocation.
+            Select a mentor and mentee, or use AI to suggest the best match.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5 py-4">
+          {/* AI Suggest Button */}
+          <Button
+            variant="outline"
+            onClick={handleAISuggest}
+            disabled={suggesting}
+            className="w-full gap-2 border-primary/30 text-primary hover:bg-primary/5"
+          >
+            <Sparkles className="h-4 w-4" />
+            {suggesting ? "Finding best match..." : "AI Suggest Best Match"}
+          </Button>
+
+          {/* Suggestion reason */}
+          {suggestionReason && (
+            <div className="rounded-lg bg-primary/5 border border-primary/20 px-3 py-2 text-xs text-primary">
+              {suggestionReason}
+            </div>
+          )}
+
           {/* Mentor Select */}
           <div className="space-y-2">
             <Label htmlFor="mentor">Select Mentor</Label>
@@ -86,11 +121,9 @@ export function AddAllocationModal({
               </SelectTrigger>
               <SelectContent>
                 {mentors.map((mentor) => (
-                  <SelectItem key={mentor.id} value={mentor.id}>
+                  <SelectItem key={mentor.id} value={String(mentor.id)}>
                     <span className="font-medium">{mentor.name}</span>
-                    <span className="ml-2 text-muted-foreground">
-                      - {mentor.department}
-                    </span>
+                    <span className="ml-2 text-muted-foreground">- {mentor.department}</span>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -106,10 +139,10 @@ export function AddAllocationModal({
               </SelectTrigger>
               <SelectContent>
                 {mentees.map((mentee) => (
-                  <SelectItem key={mentee.id} value={mentee.id}>
+                  <SelectItem key={mentee.id} value={String(mentee.id)}>
                     <span className="font-medium">{mentee.name}</span>
                     <span className="ml-2 text-muted-foreground">
-                      - {mentee.year}
+                      - {mentee.academic_year}, {mentee.department}
                     </span>
                   </SelectItem>
                 ))}
@@ -119,13 +152,8 @@ export function AddAllocationModal({
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="outline" onClick={() => handleOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={!selectedMentor || !selectedMentee}
-          >
+          <Button variant="outline" onClick={() => handleOpenChange(false)}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={!selectedMentor || !selectedMentee}>
             Add Allocation
           </Button>
         </DialogFooter>
